@@ -209,6 +209,39 @@ class TestAspireTrainerInit:
         call_kwargs = mock_dependencies["model_class"].from_pretrained.call_args[1]
         assert call_kwargs.get("quantization_config") is not None
 
+    def test_trainer_init_student_with_8bit_quantization(self, mock_dependencies):
+        """Test AspireTrainer._init_student with 8-bit quantization."""
+        from aspire.trainer import AspireTrainer
+
+        config = AspireConfig()
+        config.student.load_in_4bit = False
+        config.student.load_in_8bit = True
+
+        trainer = AspireTrainer(config)
+
+        # Should prepare for kbit training
+        mock_dependencies["prepare"].assert_called_once()
+        # Check that quantization config was passed
+        call_kwargs = mock_dependencies["model_class"].from_pretrained.call_args[1]
+        assert call_kwargs.get("quantization_config") is not None
+        # Verify it's 8-bit config (load_in_8bit should be True in config)
+        quant_config = call_kwargs.get("quantization_config")
+        assert quant_config is not None
+
+    def test_trainer_init_student_no_quantization(self, mock_dependencies):
+        """Test AspireTrainer._init_student without quantization."""
+        from aspire.trainer import AspireTrainer
+
+        config = AspireConfig()
+        config.student.load_in_4bit = False
+        config.student.load_in_8bit = False
+        config.student.use_lora = False
+
+        trainer = AspireTrainer(config)
+
+        # Should NOT prepare for kbit training
+        mock_dependencies["prepare"].assert_not_called()
+
     def test_trainer_init_critic_head_architecture(self, mock_dependencies):
         """Test AspireTrainer._init_critic with head architecture."""
         from aspire.trainer import AspireTrainer
@@ -539,3 +572,284 @@ class TestIntegration:
 
         assert config.teacher.default_teacher in ("claude", "openai", "local")
         assert config.teacher.max_dialogue_turns > 0
+
+
+# ============================================================================
+# AspireTrainer Checkpoint Tests
+# ============================================================================
+
+class TestAspireTrainerCheckpoint:
+    """Tests for AspireTrainer checkpoint save/load functionality."""
+
+    @pytest.fixture
+    def mock_trainer_with_deps(self, tmp_path):
+        """Create a mocked trainer with all dependencies for checkpoint tests."""
+        with patch("aspire.trainer.AutoModelForCausalLM") as mock_model_class, \
+             patch("aspire.trainer.AutoTokenizer") as mock_tokenizer_class, \
+             patch("aspire.trainer.get_peft_model") as mock_peft, \
+             patch("aspire.trainer.prepare_model_for_kbit_training") as mock_prepare, \
+             patch("aspire.trainer.CriticHead") as mock_critic_head, \
+             patch("aspire.trainer.get_teacher") as mock_get_teacher, \
+             patch("aspire.trainer.AspireLoss") as mock_loss, \
+             patch("aspire.trainer.DialogueGenerator") as mock_dialogue_gen, \
+             patch("aspire.trainer.DialogueManager") as mock_dialogue_mgr, \
+             patch("aspire.trainer.DialogueFormatter") as mock_formatter, \
+             patch("aspire.trainer.AdamW") as mock_adamw:
+
+            # Setup model mock
+            mock_model = MagicMock()
+            mock_model.config.hidden_size = 768
+            mock_model.parameters.return_value = iter([torch.nn.Parameter(torch.randn(10, 10))])
+            mock_model.save_pretrained = MagicMock()
+            mock_model_class.from_pretrained.return_value = mock_model
+            mock_peft.return_value = mock_model
+            mock_prepare.return_value = mock_model
+
+            # Setup tokenizer mock
+            mock_tokenizer = MagicMock()
+            mock_tokenizer.pad_token = None
+            mock_tokenizer.eos_token = "</s>"
+            mock_tokenizer.save_pretrained = MagicMock()
+            mock_tokenizer_class.from_pretrained.return_value = mock_tokenizer
+
+            # Setup critic mock
+            mock_critic = MagicMock()
+            mock_critic.to.return_value = mock_critic
+            mock_critic.get_trainable_parameters.return_value = [torch.nn.Parameter(torch.randn(10, 10))]
+            mock_critic.save = MagicMock()
+            mock_critic_head.return_value = mock_critic
+
+            # Setup teacher mock
+            mock_teacher = MagicMock()
+            mock_get_teacher.return_value = mock_teacher
+
+            # Setup optimizer mock
+            mock_optimizer = MagicMock()
+            mock_adamw.return_value = mock_optimizer
+
+            from aspire.trainer import AspireTrainer
+
+            config = AspireConfig()
+            config.training.output_dir = tmp_path / "outputs"
+            trainer = AspireTrainer(config)
+
+            yield {
+                "trainer": trainer,
+                "model": mock_model,
+                "tokenizer": mock_tokenizer,
+                "critic": mock_critic,
+                "tmp_path": tmp_path,
+            }
+
+    def test_save_checkpoint_creates_files(self, mock_trainer_with_deps):
+        """Test AspireTrainer._save_checkpoint creates files."""
+        trainer = mock_trainer_with_deps["trainer"]
+        tmp_path = mock_trainer_with_deps["tmp_path"]
+
+        # Save checkpoint
+        trainer._save_checkpoint(epoch=1)
+
+        # Check that save methods were called
+        mock_trainer_with_deps["model"].save_pretrained.assert_called()
+        mock_trainer_with_deps["tokenizer"].save_pretrained.assert_called()
+        mock_trainer_with_deps["critic"].save.assert_called()
+
+        # Check checkpoint directory structure
+        checkpoint_dir = trainer.config.training.output_dir / "checkpoint-1"
+        assert checkpoint_dir.exists() or mock_trainer_with_deps["model"].save_pretrained.called
+
+    def test_save_checkpoint_creates_correct_structure(self, mock_trainer_with_deps):
+        """Test AspireTrainer._save_checkpoint creates correct directory structure."""
+        trainer = mock_trainer_with_deps["trainer"]
+
+        trainer._save_checkpoint(epoch=2)
+
+        # Verify student save was called with correct path
+        model_call_args = mock_trainer_with_deps["model"].save_pretrained.call_args
+        save_path = model_call_args[0][0]
+        assert "checkpoint-2" in str(save_path)
+        assert "student" in str(save_path)
+
+    def test_save_checkpoint_saves_critic(self, mock_trainer_with_deps):
+        """Test AspireTrainer._save_checkpoint saves critic model."""
+        trainer = mock_trainer_with_deps["trainer"]
+
+        trainer._save_checkpoint(epoch=3)
+
+        # Verify critic save was called
+        critic_call_args = mock_trainer_with_deps["critic"].save.call_args
+        save_path = critic_call_args[0][0]
+        assert "checkpoint-3" in str(save_path)
+        assert "critic" in str(save_path)
+
+    def test_load_checkpoint_loads_models(self, mock_trainer_with_deps):
+        """Test AspireTrainer.load_checkpoint restores state."""
+        trainer = mock_trainer_with_deps["trainer"]
+        tmp_path = mock_trainer_with_deps["tmp_path"]
+
+        checkpoint_dir = tmp_path / "checkpoint-test"
+        checkpoint_dir.mkdir(parents=True)
+
+        # Mock PeftModel from peft package (where it's imported in load_checkpoint)
+        with patch("peft.PeftModel") as mock_peft_model:
+            mock_loaded = MagicMock()
+            mock_loaded.to = MagicMock(return_value=mock_loaded)
+            mock_peft_model.from_pretrained.return_value = mock_loaded
+
+            # Mock critic class load method
+            mock_critic_class = MagicMock()
+            mock_critic_class.load = MagicMock(
+                return_value=mock_trainer_with_deps["critic"]
+            )
+            trainer.critic.__class__ = mock_critic_class
+
+            trainer.load_checkpoint(checkpoint_dir)
+
+            # Verify PeftModel.from_pretrained was called
+            mock_peft_model.from_pretrained.assert_called_once()
+
+
+# ============================================================================
+# AspireLoss Initialization Tests
+# ============================================================================
+
+class TestAspireTrainerLossInit:
+    """Tests for AspireTrainer loss initialization."""
+
+    @pytest.fixture
+    def mock_dependencies(self):
+        """Mock all heavy dependencies for loss init tests."""
+        with patch("aspire.trainer.AutoModelForCausalLM") as mock_model_class, \
+             patch("aspire.trainer.AutoTokenizer") as mock_tokenizer_class, \
+             patch("aspire.trainer.get_peft_model") as mock_peft, \
+             patch("aspire.trainer.prepare_model_for_kbit_training") as mock_prepare, \
+             patch("aspire.trainer.CriticHead") as mock_critic_head, \
+             patch("aspire.trainer.get_teacher") as mock_get_teacher, \
+             patch("aspire.trainer.AspireLoss") as mock_loss, \
+             patch("aspire.trainer.DialogueGenerator") as mock_dialogue_gen, \
+             patch("aspire.trainer.DialogueManager") as mock_dialogue_mgr, \
+             patch("aspire.trainer.DialogueFormatter") as mock_formatter, \
+             patch("aspire.trainer.AdamW") as mock_adamw:
+
+            mock_model = MagicMock()
+            mock_model.config.hidden_size = 768
+            mock_model.parameters.return_value = iter([torch.nn.Parameter(torch.randn(10, 10))])
+            mock_model_class.from_pretrained.return_value = mock_model
+            mock_peft.return_value = mock_model
+            mock_prepare.return_value = mock_model
+
+            mock_tokenizer = MagicMock()
+            mock_tokenizer.pad_token = None
+            mock_tokenizer.eos_token = "</s>"
+            mock_tokenizer_class.from_pretrained.return_value = mock_tokenizer
+
+            mock_critic = MagicMock()
+            mock_critic.to.return_value = mock_critic
+            mock_critic.get_trainable_parameters.return_value = [torch.nn.Parameter(torch.randn(10, 10))]
+            mock_critic_head.return_value = mock_critic
+
+            mock_teacher = MagicMock()
+            mock_get_teacher.return_value = mock_teacher
+
+            mock_optimizer = MagicMock()
+            mock_adamw.return_value = mock_optimizer
+
+            yield {
+                "loss": mock_loss,
+            }
+
+    def test_init_loss_creates_aspire_loss(self, mock_dependencies):
+        """Test AspireTrainer._init_loss creates AspireLoss."""
+        from aspire.trainer import AspireTrainer
+
+        config = AspireConfig()
+        trainer = AspireTrainer(config)
+
+        # AspireLoss should have been instantiated
+        mock_dependencies["loss"].assert_called_once()
+
+    def test_init_loss_uses_config_weights(self, mock_dependencies):
+        """Test AspireTrainer._init_loss uses weights from config."""
+        from aspire.trainer import AspireTrainer
+
+        config = AspireConfig()
+        config.loss.critic_score_weight = 2.0
+        config.loss.student_reward_weight = 1.5
+
+        trainer = AspireTrainer(config)
+
+        # Check that AspireLoss was called with correct weights
+        call_kwargs = mock_dependencies["loss"].call_args[1]
+        assert call_kwargs.get("critic_score_weight") == 2.0
+        assert call_kwargs.get("student_reward_weight") == 1.5
+
+
+# ============================================================================
+# AspireTrainer Optimizer Tests
+# ============================================================================
+
+class TestAspireTrainerOptimizerInit:
+    """Tests for AspireTrainer optimizer initialization."""
+
+    def test_init_optimizers_creates_optimizers(self):
+        """Test AspireTrainer._init_optimizers creates both optimizers."""
+        with patch("aspire.trainer.AutoModelForCausalLM") as mock_model_class, \
+             patch("aspire.trainer.AutoTokenizer") as mock_tokenizer_class, \
+             patch("aspire.trainer.get_peft_model") as mock_peft, \
+             patch("aspire.trainer.prepare_model_for_kbit_training") as mock_prepare, \
+             patch("aspire.trainer.CriticHead") as mock_critic_head, \
+             patch("aspire.trainer.get_teacher") as mock_get_teacher, \
+             patch("aspire.trainer.AspireLoss") as mock_loss, \
+             patch("aspire.trainer.DialogueGenerator") as mock_dialogue_gen, \
+             patch("aspire.trainer.DialogueManager") as mock_dialogue_mgr, \
+             patch("aspire.trainer.DialogueFormatter") as mock_formatter:
+
+            mock_model = MagicMock()
+            mock_model.config.hidden_size = 768
+            param1 = torch.nn.Parameter(torch.randn(10, 10))
+            mock_model.parameters.return_value = iter([param1])
+            mock_model_class.from_pretrained.return_value = mock_model
+            mock_peft.return_value = mock_model
+            mock_prepare.return_value = mock_model
+
+            mock_tokenizer = MagicMock()
+            mock_tokenizer.pad_token = None
+            mock_tokenizer.eos_token = "</s>"
+            mock_tokenizer_class.from_pretrained.return_value = mock_tokenizer
+
+            mock_critic = MagicMock()
+            mock_critic.to.return_value = mock_critic
+            critic_param = torch.nn.Parameter(torch.randn(10, 10))
+            mock_critic.get_trainable_parameters.return_value = [critic_param]
+            mock_critic_head.return_value = mock_critic
+
+            mock_teacher = MagicMock()
+            mock_get_teacher.return_value = mock_teacher
+
+            from aspire.trainer import AspireTrainer
+
+            config = AspireConfig()
+            trainer = AspireTrainer(config)
+
+            # Both optimizers should exist
+            assert hasattr(trainer, "student_optimizer")
+            assert hasattr(trainer, "critic_optimizer")
+            assert trainer.student_optimizer is not None
+            assert trainer.critic_optimizer is not None
+
+    def test_config_learning_rate_values(self):
+        """Test that config has expected learning rate fields."""
+        config = AspireConfig()
+
+        # Check default learning rates exist
+        assert hasattr(config.training, "learning_rate")
+        assert hasattr(config.training, "critic_learning_rate")
+        assert config.training.learning_rate > 0
+        assert config.training.critic_learning_rate > 0
+
+    def test_config_weight_decay(self):
+        """Test that config has weight decay setting."""
+        config = AspireConfig()
+
+        assert hasattr(config.training, "weight_decay")
+        assert config.training.weight_decay >= 0

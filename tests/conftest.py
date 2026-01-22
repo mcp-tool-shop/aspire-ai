@@ -300,3 +300,99 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "gpu: marks tests that require GPU")
     config.addinivalue_line("markers", "integration: marks integration tests")
     config.addinivalue_line("markers", "api: marks tests that call external APIs")
+
+
+# ============================================================================
+# Teacher Mock Fixtures
+# ============================================================================
+
+@pytest.fixture
+def mock_claude_response_challenge():
+    """Mock response for Claude challenge generation."""
+    return {
+        "challenge": "Why did you choose that particular approach?",
+        "context": "Testing the student's reasoning",
+        "difficulty": 0.6
+    }
+
+
+@pytest.fixture
+def mock_claude_response_evaluate():
+    """Mock response for Claude evaluation."""
+    return {
+        "overall_score": 7.5,
+        "dimension_scores": [
+            {"dimension": "correctness", "score": 8.0, "explanation": "Factually correct"},
+            {"dimension": "reasoning", "score": 7.0, "explanation": "Good reasoning"},
+        ],
+        "reasoning": "The response demonstrates good understanding.",
+        "strengths": ["Clear explanation", "Good examples"],
+        "weaknesses": ["Could be more detailed"],
+        "suggestions": ["Add more examples"],
+        "improved_response": "An improved version of the response."
+    }
+
+
+@pytest.fixture
+def mock_openai_response_challenge():
+    """Mock response for OpenAI challenge generation."""
+    return {
+        "challenge": "What happens in edge cases?",
+        "context": "Testing edge case handling",
+        "difficulty": 0.5
+    }
+
+
+@pytest.fixture
+def mock_openai_response_evaluate():
+    """Mock response for OpenAI evaluation."""
+    return {
+        "overall_score": 8.0,
+        "dimension_scores": [
+            {"dimension": "correctness", "score": 8.5, "explanation": "Very accurate"},
+            {"dimension": "clarity", "score": 7.5, "explanation": "Well explained"},
+        ],
+        "reasoning": "Strong response overall.",
+        "strengths": ["Accurate", "Well-structured"],
+        "weaknesses": ["Minor gaps"],
+        "suggestions": ["Consider edge cases"],
+        "improved_response": "A better version would include..."
+    }
+
+
+@pytest.fixture
+def sample_prompt():
+    """Sample prompt for testing."""
+    return "Explain the concept of recursion in programming."
+
+
+@pytest.fixture
+def sample_student_response():
+    """Sample student response for testing."""
+    return "Recursion is when a function calls itself to solve a problem."
+
+
+@pytest.fixture
+def sample_dialogue_history():
+    """Sample dialogue history for testing."""
+    from aspire.teachers.base import (
+        DialogueHistory, DialogueTurn, TeacherChallenge, ChallengeType
+    )
+
+    history = DialogueHistory(
+        prompt="Explain recursion",
+        initial_response="Recursion is a function calling itself."
+    )
+
+    turn = DialogueTurn(
+        turn_number=1,
+        challenge=TeacherChallenge(
+            challenge_type=ChallengeType.PROBE_REASONING,
+            content="Why would you use recursion instead of iteration?",
+            difficulty=0.5
+        ),
+        student_response="Recursion is useful for problems with recursive structure."
+    )
+    history.add_turn(turn)
+
+    return history
