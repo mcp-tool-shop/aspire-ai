@@ -31,7 +31,7 @@ The key insight: **Humans don't carry their mentors around forever.** We interna
 ## Installation
 
 ```bash
-cd F:\AI\aspire-ai
+cd aspire-ai
 pip install -e .
 ```
 
