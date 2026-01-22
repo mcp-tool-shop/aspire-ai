@@ -297,6 +297,48 @@ cp -r integrations/forge /path/to/sd-webui-forge/extensions-builtin/sd_forge_asp
 | **Composition Expert** | Balance, focal points, visual flow |
 | **Harsh Critic** | Very high standards |
 
+### 🤖 Isaac Gym / Isaac Lab (Robotics)
+
+ASPIRE extends to embodied AI! Teach robots to develop physical intuition.
+
+```
+integrations/isaac/
+├── motion_teacher.py       # Safety, efficiency, grace teachers
+├── trajectory_critic.py    # Learns to predict motion quality
+├── isaac_wrapper.py        # Environment integration
+├── trainer.py              # Training loop
+└── examples/
+    ├── basic_training.py   # Simple reaching task
+    ├── custom_teacher.py   # Assembly task teacher
+    └── locomotion.py       # Quadruped walking
+```
+
+**Features:**
+- **Motion Teachers**: Safety Inspector, Efficiency Expert, Grace Coach, Physics Oracle
+- **Trajectory Critics**: Transformer, LSTM, TCN architectures for motion evaluation
+- **GPU-Accelerated**: 512+ parallel environments with Isaac Gym
+- **Self-Refinement**: Robot evaluates its own motions before execution
+
+**Quick Start:**
+```python
+from aspire.integrations.isaac import AspireIsaacTrainer, MotionTeacher
+
+teacher = MotionTeacher(
+    personas=["safety_inspector", "efficiency_expert", "grace_coach"],
+    strategy="vote",
+)
+
+trainer = AspireIsaacTrainer(env="FrankaCubeStack-v0", teacher=teacher)
+trainer.train(epochs=100)
+```
+
+| Motion Teacher | Focus |
+|----------------|-------|
+| **Safety Inspector** | Collisions, joint limits, force limits |
+| **Efficiency Expert** | Energy, time, path length |
+| **Grace Coach** | Smoothness, naturalness, jerk minimization |
+| **Physics Oracle** | Ground truth from simulator |
+
 ---
 
 ## The Philosophy
