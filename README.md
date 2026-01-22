@@ -17,6 +17,7 @@
   <a href="#quick-start">Quick Start</a> •
   <a href="#teacher-personas">Teachers</a> •
   <a href="#how-it-works">How It Works</a> •
+  <a href="#integrations">Integrations</a> •
   <a href="#documentation">Docs</a>
 </p>
 
@@ -257,6 +258,44 @@ ASPIRE is fully Windows-compatible with RTX 5080/Blackwell support:
 - `dataloader_num_workers=0`
 - `XFORMERS_DISABLED=1`
 - Proper multiprocessing with `freeze_support()`
+
+---
+
+## Integrations
+
+### 🖼️ Stable Diffusion WebUI Forge
+
+ASPIRE extends to image generation! Train Stable Diffusion models to develop aesthetic judgment.
+
+```
+integrations/forge/
+├── scripts/
+│   ├── aspire_generate.py   # Critic-guided generation
+│   └── aspire_train.py      # Training interface
+├── vision_teacher.py        # Claude Vision / GPT-4V teachers
+├── image_critic.py          # CLIP and latent-space critics
+└── README.md
+```
+
+**Features:**
+- **Vision Teachers**: Claude Vision, GPT-4V critique your generated images
+- **Image Critics**: CLIP-based and latent-space critics for real-time guidance
+- **Training UI**: Train LoRA adapters with live preview and before/after comparison
+- **No API at inference**: Trained critic guides generation locally
+
+**Installation:**
+```bash
+# Copy to your Forge extensions
+cp -r integrations/forge /path/to/sd-webui-forge/extensions-builtin/sd_forge_aspire
+```
+
+| Vision Teacher | Focus |
+|----------------|-------|
+| **Balanced Critic** | Fair technical and artistic evaluation |
+| **Technical Analyst** | Quality, artifacts, sharpness |
+| **Artistic Visionary** | Creativity and emotional impact |
+| **Composition Expert** | Balance, focal points, visual flow |
+| **Harsh Critic** | Very high standards |
 
 ---
 
