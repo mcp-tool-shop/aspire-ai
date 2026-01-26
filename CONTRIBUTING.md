@@ -35,7 +35,7 @@ Be respectful, inclusive, and constructive. We're all here to build something me
    ```
 3. Add the upstream remote:
    ```bash
-   git remote add upstream https://github.com/mikeyfrilot/aspire-ai.git
+   git remote add upstream https://github.com/mcp-tool-shop/aspire-ai.git
    ```
 
 ## Development Setup

@@ -92,7 +92,7 @@ These are AI systems that can truly *help* — not just respond.
 
 The ASPIRE Perception Module is available now as open source:
 
-**Repository:** https://github.com/mikeyfrilot/aspire-ai
+**Repository:** https://github.com/mcp-tool-shop/aspire-ai
 
 **Topics:** `cognitive-empathy` `syntropy` `theory-of-mind` `metacognition` `adversarial-training` `perception` `negentropy`
 
@@ -114,7 +114,7 @@ The Perception Module extends this vision: AI that doesn't just learn *what* to 
 
 ---
 
-**Contact:** https://github.com/mikeyfrilot/aspire-ai/issues
+**Contact:** https://github.com/mcp-tool-shop/aspire-ai/issues
 
 **License:** MIT
 

@@ -236,4 +236,4 @@ Fully Windows-compatible with RTX 5080/Blackwell support:
 
 ---
 
-*Part of the [ASPIRE project](https://github.com/mikeyfrilot/aspire-ai)*
+*Part of the [ASPIRE project](https://github.com/mcp-tool-shop/aspire-ai)*

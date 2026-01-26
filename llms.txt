@@ -1,0 +1,89 @@
+# ASPIRE
+
+> Adversarial Student-Professor Internalized Reasoning Engine — Teaching AI to develop judgment, not just knowledge
+
+## Overview
+
+ASPIRE is a training framework that teaches AI models to internalize mentor wisdom rather than just memorizing answers. Through adversarial dialogue between student, critic, and teacher models, the system develops genuine judgment that persists at inference time without the teacher.
+
+## The Idea
+
+**Traditional fine-tuning:** "Here are the right answers. Match them."
+
+**ASPIRE:** "Here is a wise mind. Learn to think like it does."
+
+The critic learns to predict what the teacher would think. After training, the student uses this internalized critic to self-refine — no teacher needed at inference time.
+
+## Quick Start
+
+```bash
+git clone https://github.com/mcp-tool-shop/aspire-ai.git
+cd aspire-ai
+pip install -e .
+
+# Set your API key
+export ANTHROPIC_API_KEY=your-key
+
+# Run basic training
+python -m aspire train --teacher claude-3-opus --student llama3
+```
+
+## Architecture
+
+```
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│   STUDENT   │    │   CRITIC    │    │   TEACHER   │
+│    MODEL    │    │   MODEL     │    │    MODEL    │
+│ (learning)  │    │ (internal-  │    │ (wisdom)    │
+│             │    │  ized       │    │             │
+│             │    │  judgment)  │    │             │
+└──────┬──────┘    └──────┬──────┘    └──────┬──────┘
+       │                  │                   │
+       └──────────────────┴───────────────────┘
+                          │
+                 ADVERSARIAL DIALOGUE
+```
+
+## Core Concepts
+
+### Teacher Personas
+Pre-defined wisdom archetypes:
+- **Socrates** — Questioning, dialectic method
+- **Feynman** — Clear explanation, first principles
+- **Buddha** — Compassionate wisdom, mindfulness
+- **Marcus Aurelius** — Stoic reason, practical ethics
+
+### Training Loop
+1. Student attempts a task
+2. Critic predicts teacher feedback
+3. Teacher provides actual feedback
+4. Critic learns from discrepancy
+5. Student internalizes critic's judgment
+
+### Internalization
+After training, the critic is distilled into the student, enabling self-refinement without external guidance.
+
+## API
+
+### aspire.train(config)
+Run ASPIRE training loop.
+- `teacher`: Teacher model (claude-3-opus, gpt-4, etc.)
+- `student`: Student model to train
+- `critic`: Critic model (default: same as student)
+- `persona`: Teacher persona (socrates, feynman, etc.)
+- `epochs`: Training epochs
+
+### aspire.evaluate(model, benchmark)
+Evaluate model judgment quality.
+- Returns: Judgment scores, internalization metrics
+
+## Links
+
+- Repository: https://github.com/mcp-tool-shop/aspire-ai
+- PyPI: https://pypi.org/project/aspire-ai/
+- Documentation: https://github.com/mcp-tool-shop/aspire-ai#readme
+- Issues: https://github.com/mcp-tool-shop/aspire-ai/issues
+
+## License
+
+MIT License

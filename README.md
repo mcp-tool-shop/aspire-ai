@@ -22,12 +22,12 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/mikeyfrilot/aspire-ai/actions/workflows/ci.yml"><img src="https://github.com/mikeyfrilot/aspire-ai/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/mcp-tool-shop/aspire-ai/actions/workflows/ci.yml"><img src="https://github.com/mcp-tool-shop/aspire-ai/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://pypi.org/project/aspire-ai/"><img src="https://img.shields.io/pypi/v/aspire-ai.svg" alt="PyPI"></a>
   <img src="https://img.shields.io/badge/python-3.10+-blue.svg" alt="Python 3.10+">
   <img src="https://img.shields.io/badge/pytorch-2.0+-ee4c2c.svg" alt="PyTorch 2.0+">
   <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="MIT License">
-  <img src="https://img.shields.io/github/stars/mikeyfrilot/aspire-ai?style=social" alt="GitHub Stars">
+  <img src="https://img.shields.io/github/stars/mcp-tool-shop/aspire-ai?style=social" alt="GitHub Stars">
 </p>
 
 ---
@@ -72,7 +72,7 @@ The **critic** learns to predict what the teacher would think. After training, t
 ### Installation
 
 ```bash
-git clone https://github.com/mikeyfrilot/aspire-ai.git
+git clone https://github.com/mcp-tool-shop/aspire-ai.git
 cd aspire-ai
 pip install -e .
 ```
@@ -429,7 +429,7 @@ This is early-stage research code. Contributions welcome:
   author = {Friloux, Mikey and Claude},
   title = {ASPIRE: Adversarial Student-Professor Internalized Reasoning Engine},
   year = {2026},
-  url = {https://github.com/mikeyfrilot/aspire-ai}
+  url = {https://github.com/mcp-tool-shop/aspire-ai}
 }
 ```
 
